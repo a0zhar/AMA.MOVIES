@@ -1,0 +1,28 @@
+{
+  "images" : [
+    {
+      "filename" : " (2023 x 723 بيكسل).png",
+      "idiom" : "tv",
+      "scale" : "1x"
+    },
+    {
+      "filename" : " (4640 x 1440 بيكسل).png",
+      "idiom" : "tv",
+      "scale" : "2x"
+    },
+    {
+      "filename" : " (2023 x 723 بيكسل) 1.png",
+      "idiom" : "tv-marketing",
+      "scale" : "1x"
+    },
+    {
+      "filename" : " (4640 x 1440 بيكسل) 1.png",
+      "idiom" : "tv-marketing",
+      "scale" : "2x"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
