@@ -39,7 +39,11 @@ jobs:
       id: find_schemes
       run: |
         echo "Finding Xcode schemes..."
-        SCHEMES=$(xcodebuild -list -project $PROJECT_PATH | grep 'Schemes:' -A 1000 | grep -v 'Targets:' | sed 's/^[ \t]*//;s/[ \t]*$//')
+        if [ -n "$WORKSPACE_PATH" ]; then
+          SCHEMES=$(xcodebuild -list -workspace $WORKSPACE_PATH | grep 'Schemes:' -A 1000 | grep -v 'Targets:' | sed 's/^[ \t]*//;s/[ \t]*$//')
+        else
+          SCHEMES=$(xcodebuild -list -project $PROJECT_PATH | grep 'Schemes:' -A 1000 | grep -v 'Targets:' | sed 's/^[ \t]*//;s/[ \t]*$//')
+        fi
 
         if [ -z "$SCHEMES" ]; then
           echo "No schemes found."
@@ -79,13 +83,14 @@ jobs:
         echo "Cleaning build folder..."
         rm -rf build/
 
-    # Step 6: Build Unsigned IPA file using the Xcode project
+    # Step 6: Build Unsigned IPA file
     - name: Build Unsigned IPA
       run: |
-        if [ -z "$WORKSPACE_PATH" ]; then
-          echo "Building using project..."
-          xcodebuild -project $PROJECT_PATH \
-                     -scheme $SCHEME \
+        echo "Building IPA..."
+        if [ -n "$WORKSPACE_PATH" ]; then
+          echo "Building using workspace..."
+          xcodebuild -workspace $WORKSPACE_PATH \
+                     -scheme "$SCHEME" \
                      -sdk appletvos \
                      -configuration Debug \
                      -archivePath $PWD/build/AMA.MOVIES.xcarchive \
@@ -95,9 +100,9 @@ jobs:
                      CODE_SIGNING_REQUIRED=NO \
                      PROVISIONING_PROFILE_SPECIFIER=""
         else
-          echo "Building using workspace..."
-          xcodebuild -workspace $WORKSPACE_PATH \
-                     -scheme $SCHEME \
+          echo "Building using project..."
+          xcodebuild -project $PROJECT_PATH \
+                     -scheme "$SCHEME" \
                      -sdk appletvos \
                      -configuration Debug \
                      -archivePath $PWD/build/AMA.MOVIES.xcarchive \
