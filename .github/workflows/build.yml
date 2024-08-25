@@ -17,19 +17,20 @@ jobs:
     # Remove this block if you don't need to install dependencies via CocoaPods
 
     # Step 3: Build IPA file
+  # Step 4: Build IPA file using the Xcode project
     - name: Build IPA
       run: |
-        xcodebuild -workspace AMA.MOVIES.xcworkspace \
-               -scheme AMA.MOVIES \
-               -sdk appletvos \
-               -configuration Release \
-               -archivePath $PWD/build/AMA.MOVIES.xcarchive \
-               clean archive
+        xcodebuild -project AMA.MOVIES.xcodeproj \
+                   -scheme AMA.MOVIES \
+                   -sdk appletvos \
+                   -configuration Release \
+                   -archivePath $PWD/build/AMA.MOVIES.xcarchive \
+                   clean archive
 
         xcodebuild -exportArchive \
-               -archivePath $PWD/build/AMA.MOVIES.xcarchive \
-               -exportOptionsPlist exportOptions.plist \
-               -exportPath $PWD/build
+                   -archivePath $PWD/build/AMA.MOVIES.xcarchive \
+                   -exportOptionsPlist exportOptions.plist \
+                   -exportPath $PWD/build
 
     # Step 4: Upload the IPA as an artifact
     - name: Upload IPA artifact
