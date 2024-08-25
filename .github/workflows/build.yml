@@ -1,4 +1,4 @@
-name: Compile IPA App
+name: Compile TvOS IPA
 
 on:
   workflow_dispatch:
@@ -13,24 +13,93 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    # Step 3: Clean the Build Folder
+    # Step 2: Find Xcode Project and Workspace
+    - name: Find Xcode Project and Workspace
+      id: find_xcode_files
+      run: |
+        # Find .xcodeproj and .xcworkspace files
+        echo "Finding Xcode project and workspace..."
+        export PROJECT_PATH=$(find . -name "*.xcodeproj" | head -n 1)
+        export WORKSPACE_PATH=$(find . -name "*.xcworkspace" | head -n 1)
+
+        if [ -z "$PROJECT_PATH" ]; then
+          echo "No .xcodeproj file found."
+          exit 1
+        fi
+
+        if [ -z "$WORKSPACE_PATH" ]; then
+          echo "No .xcworkspace file found. Using project only."
+          export WORKSPACE_PATH=""
+        fi
+
+        echo "PROJECT_PATH=$PROJECT_PATH" >> $GITHUB_ENV
+        echo "WORKSPACE_PATH=$WORKSPACE_PATH" >> $GITHUB_ENV
+
+    # Step 3: Find and Install Dependencies
+    - name: Install Dependencies
+      run: |
+        echo "Checking for dependencies..."
+        if [ -f "$PROJECT_PATH/Podfile" ]; then
+          echo "Installing CocoaPods dependencies..."
+          sudo gem install cocoapods
+          cd $(dirname $PROJECT_PATH)
+          pod install
+        else
+          echo "No Podfile found. Skipping CocoaPods installation."
+        fi
+
+    # Step 4: Find Schemes
+    - name: Find Xcode Schemes
+      id: find_schemes
+      run: |
+        echo "Finding Xcode schemes..."
+        SCHEMES=$(xcodebuild -list -project $PROJECT_PATH | grep 'Schemes:' -A 1000 | grep -v 'Targets:' | sed 's/^[ \t]*//;s/[ \t]*$//')
+        
+        if [ -z "$SCHEMES" ]; then
+          echo "No schemes found."
+          exit 1
+        fi
+
+        # Use the first scheme found
+        FIRST_SCHEME=$(echo "$SCHEMES" | head -n 1)
+        echo "SCHEME=$FIRST_SCHEME" >> $GITHUB_ENV
+        echo "Found schemes: $SCHEMES"
+        echo "Selected scheme: $FIRST_SCHEME"
+
+    # Step 5: Clean the Build Folder
     - name: Clean Build Folder
       run: |
+        echo "Cleaning build folder..."
         rm -rf build/
 
-    # Step 4: Build Unsigned IPA file using the Xcode project
+    # Step 6: Build Unsigned IPA file using the Xcode project
     - name: Build Unsigned IPA
       run: |
-        xcodebuild -project AMA.MOVIES.xcodeproj \
-                   -scheme AMA.MOVIES \
-                   -sdk appletvos \
-                   -configuration Debug \
-                   -archivePath $PWD/build/AMA.MOVIES.xcarchive \
-                   clean archive \
-                   CODE_SIGNING_ALLOWED=NO \
-                   CODE_SIGNING_IDENTITY="" \
-                   CODE_SIGNING_REQUIRED=NO \
-                   PROVISIONING_PROFILE_SPECIFIER=""
+        if [ -z "$WORKSPACE_PATH" ]; then
+          echo "Building using project..."
+          xcodebuild -project $PROJECT_PATH \
+                     -scheme $SCHEME \
+                     -sdk appletvos \
+                     -configuration Debug \
+                     -archivePath $PWD/build/AMA.MOVIES.xcarchive \
+                     clean archive \
+                     CODE_SIGNING_ALLOWED=NO \
+                     CODE_SIGNING_IDENTITY="" \
+                     CODE_SIGNING_REQUIRED=NO \
+                     PROVISIONING_PROFILE_SPECIFIER=""
+        else
+          echo "Building using workspace..."
+          xcodebuild -workspace $WORKSPACE_PATH \
+                     -scheme $SCHEME \
+                     -sdk appletvos \
+                     -configuration Debug \
+                     -archivePath $PWD/build/AMA.MOVIES.xcarchive \
+                     clean archive \
+                     CODE_SIGNING_ALLOWED=NO \
+                     CODE_SIGNING_IDENTITY="" \
+                     CODE_SIGNING_REQUIRED=NO \
+                     PROVISIONING_PROFILE_SPECIFIER=""
+        fi
 
         xcodebuild -exportArchive \
                    -archivePath $PWD/build/AMA.MOVIES.xcarchive \
@@ -41,9 +110,9 @@ jobs:
                    CODE_SIGNING_REQUIRED=NO \
                    PROVISIONING_PROFILE_SPECIFIER=""
 
-    # Step 4: Upload the IPA as an artifact
-    - name: Upload IPA artifact
+    # Step 7: Upload the Unsigned IPA as an artifact
+    - name: Upload Unsigned IPA artifact
       uses: actions/upload-artifact@v3
       with:
-        name: AMA.MOVIES-IPA
+        name: AMA.MOVIES-Unsigned-IPA
         path: build/*.ipa
