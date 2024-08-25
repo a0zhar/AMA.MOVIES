@@ -1,0 +1,42 @@
+name: Compile IPA App
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build TvOS IPA
+    runs-on: macos-latest
+
+    steps:
+    # Step 1: Checkout the repository
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    # Step 2: Install dependencies
+    - name: Install dependencies
+      run: |
+        sudo gem install cocoapods
+        pod install --project-directory=./AMA.MOVIES
+
+    # Step 3: Build IPA file
+    - name: Build IPA
+      run: |
+        xcodebuild -workspace AMA.MOVIES.xcworkspace \
+                   -scheme AMA.MOVIES \
+                   -sdk appletvos \
+                   -configuration Release \
+                   -archivePath $PWD/build/AMA.MOVIES.xcarchive \
+                   clean archive
+
+        xcodebuild -exportArchive \
+                   -archivePath $PWD/build/AMA.MOVIES.xcarchive \
+                   -exportOptionsPlist exportOptions.plist \
+                   -exportPath $PWD/build
+
+    # Step 4: Upload the IPA as an artifact
+    - name: Upload IPA artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: AMA.MOVIES-IPA
+        path: build/*.ipa
