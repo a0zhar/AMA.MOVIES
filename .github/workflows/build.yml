@@ -13,11 +13,8 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    # Step 2: Install dependencies
-    - name: Install dependencies
-      run: |
-        sudo gem install cocoapods
-        pod install --project-directory=./AMA.MOVIES
+    # Step 2: Install dependencies (Skip if not using CocoaPods)
+    # Remove this block if you don't need to install dependencies via CocoaPods
 
     # Step 3: Build IPA file
     - name: Build IPA
