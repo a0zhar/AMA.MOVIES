@@ -20,16 +20,16 @@ jobs:
     - name: Build IPA
       run: |
         xcodebuild -workspace AMA.MOVIES.xcworkspace \
-                   -scheme AMA.MOVIES \
-                   -sdk appletvos \
-                   -configuration Release \
-                   -archivePath $PWD/build/AMA.MOVIES.xcarchive \
-                   clean archive
+               -scheme AMA.MOVIES \
+               -sdk appletvos \
+               -configuration Release \
+               -archivePath $PWD/build/AMA.MOVIES.xcarchive \
+               clean archive
 
         xcodebuild -exportArchive \
-                   -archivePath $PWD/build/AMA.MOVIES.xcarchive \
-                   -exportOptionsPlist exportOptions.plist \
-                   -exportPath $PWD/build
+               -archivePath $PWD/build/AMA.MOVIES.xcarchive \
+               -exportOptionsPlist exportOptions.plist \
+               -exportPath $PWD/build
 
     # Step 4: Upload the IPA as an artifact
     - name: Upload IPA artifact
