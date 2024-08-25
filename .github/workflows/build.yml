@@ -1,11 +1,11 @@
-name: Compile TvOS IPA
+name: Build TvOS Unsigned IPA
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    name: Build TvOS IPA
+    name: Build TvOS Unsigned IPA
     runs-on: macos-latest
 
     steps:
@@ -17,10 +17,9 @@ jobs:
     - name: Find Xcode Project and Workspace
       id: find_xcode_files
       run: |
-        # Find .xcodeproj and .xcworkspace files
         echo "Finding Xcode project and workspace..."
-        export PROJECT_PATH=$(find . -name "*.xcodeproj" | head -n 1)
-        export WORKSPACE_PATH=$(find . -name "*.xcworkspace" | head -n 1)
+        PROJECT_PATH=$(find . -name "*.xcodeproj" | head -n 1)
+        WORKSPACE_PATH=$(find . -name "*.xcworkspace" | head -n 1)
 
         if [ -z "$PROJECT_PATH" ]; then
           echo "No .xcodeproj file found."
@@ -29,18 +28,35 @@ jobs:
 
         if [ -z "$WORKSPACE_PATH" ]; then
           echo "No .xcworkspace file found. Using project only."
-          export WORKSPACE_PATH=""
+          WORKSPACE_PATH=""
         fi
 
         echo "PROJECT_PATH=$PROJECT_PATH" >> $GITHUB_ENV
         echo "WORKSPACE_PATH=$WORKSPACE_PATH" >> $GITHUB_ENV
 
-    # Step 3: Find and Install Dependencies
+    # Step 3: Find Xcode Schemes
+    - name: Find Xcode Schemes
+      id: find_schemes
+      run: |
+        echo "Finding Xcode schemes..."
+        SCHEMES=$(xcodebuild -list -project $PROJECT_PATH | grep 'Schemes:' -A 1000 | grep -v 'Targets:' | sed 's/^[ \t]*//;s/[ \t]*$//')
+
+        if [ -z "$SCHEMES" ]; then
+          echo "No schemes found."
+          exit 1
+        fi
+
+        FIRST_SCHEME=$(echo "$SCHEMES" | head -n 1)
+        echo "SCHEME=$FIRST_SCHEME" >> $GITHUB_ENV
+        echo "Found schemes: $SCHEMES"
+        echo "Selected scheme: $FIRST_SCHEME"
+
+    # Step 4: Install Dependencies
     - name: Install Dependencies
       run: |
-        echo "Checking for dependencies..."
+        echo "Checking for and installing dependencies..."
         if [ -f "$PROJECT_PATH/Podfile" ]; then
-          echo "Installing CocoaPods dependencies..."
+          echo "Podfile found. Installing CocoaPods dependencies..."
           sudo gem install cocoapods
           cd $(dirname $PROJECT_PATH)
           pod install
@@ -48,23 +64,14 @@ jobs:
           echo "No Podfile found. Skipping CocoaPods installation."
         fi
 
-    # Step 4: Find Schemes
-    - name: Find Xcode Schemes
-      id: find_schemes
-      run: |
-        echo "Finding Xcode schemes..."
-        SCHEMES=$(xcodebuild -list -project $PROJECT_PATH | grep 'Schemes:' -A 1000 | grep -v 'Targets:' | sed 's/^[ \t]*//;s/[ \t]*$//')
-        
-        if [ -z "$SCHEMES" ]; then
-          echo "No schemes found."
-          exit 1
+        if [ -f "$PROJECT_PATH/Cartfile" ]; then
+          echo "Cartfile found. Installing Carthage dependencies..."
+          brew install carthage
+          cd $(dirname $PROJECT_PATH)
+          carthage bootstrap --platform tvOS
+        else
+          echo "No Cartfile found. Skipping Carthage installation."
         fi
-
-        # Use the first scheme found
-        FIRST_SCHEME=$(echo "$SCHEMES" | head -n 1)
-        echo "SCHEME=$FIRST_SCHEME" >> $GITHUB_ENV
-        echo "Found schemes: $SCHEMES"
-        echo "Selected scheme: $FIRST_SCHEME"
 
     # Step 5: Clean the Build Folder
     - name: Clean Build Folder
